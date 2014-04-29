@@ -37,8 +37,40 @@ function searchContentApi(query, limit) {
 var qEl = document.querySelector(".q");
 var q = Bacon.fromEventTarget(qEl, "input");
 
+var lEl = document.querySelector(".limit");
+var l = Bacon.fromEventTarget(lEl, "input");
 
-// For debugging:
-q.onValue(function(value) {
-  console.log("q:", value);
+var selectStream = l.map(function(e) {
+  return e.target.value;
+})
+.toProperty(5);
+
+var inputStream = q.map(function(e) {
+  return e.target.value;
+}).filter(function(v) {
+  return v.length > 2;
+})
+.throttle(200);
+
+var combineTemp = Bacon.combineTemplate({
+  input: inputStream,
+  select: selectStream
+})
+.flatMap(function(t) {
+  return Bacon.fromPromise(searchContentApi(t.input, t.select));
+})
+.map(function(result) {
+  return result.response.results;
+})
+.map(function(results) {
+  return results.map(function(result) {
+    return "<li><a href='" + result.webUrl + "'>" + result.webTitle + "</a></li>";
+  });
+})
+.onValue(function(results) {
+  document.querySelector('.results').innerHTML = results.join(' ');
+});
+
+q.onValue(function(e) {
+  document.querySelector('.q-display').innerHTML = e.target.value;
 });
